@@ -4,41 +4,84 @@ using UnityEngine;
 
 public class ReplaySystem : MonoBehaviour
 {
-    private const int bufferFrames = 100; //number of frames in ring buffer
+    private const int bufferFrames = 1000; //number of frames in ring buffer
     private MyKeyFrame[] keyFrames = new MyKeyFrame[bufferFrames];
+    private List<MyKeyFrame> keyFramesList = new List<MyKeyFrame>();
     private Rigidbody rigidbody;
+    private GameManager gameManager;
+    private int startFrame;
+    private int endFrame;
+    private bool lastFrameRecording;
+    private int playBackIndex = 0;
 
 	// Use this for initialization
 	void Start ()
 	{
 	    rigidbody = GetComponent<Rigidbody>();
+	    gameManager = FindObjectOfType<GameManager>();
 	}
 	
 	// Update is called once per frame
 	void Update ()
 	{
-	    Record();
+	    if (gameManager.recording)
+	    {
+            if (!lastFrameRecording)
+            {
+                keyFramesList.Clear();
+                playBackIndex = 0;
+                lastFrameRecording = true;
+                startFrame = Time.frameCount;
+            }
+
+            Record();
+	    }
+	    else
+	    {
+            if (lastFrameRecording)
+            {
+                lastFrameRecording = false;
+                endFrame = Time.frameCount;
+            }
+
+            PlayBack();
+        }            
 	}
 
     private void PlayBack()
     {
+        if (playBackIndex > keyFramesList.Count-1)
+            playBackIndex = 0;
+
+        var currentFrame = keyFramesList[playBackIndex];
+
         rigidbody.isKinematic = true;
 
-        var frame = Time.frameCount % bufferFrames;
+        //var index = /*Time.frameCount*/endFrame % bufferFrames;
 
-        print("Reading frame " + frame);
-        transform.position = keyFrames[frame].Position;
-        transform.rotation = keyFrames[frame].Rotation;
+        //print("Reading frame " + index);
+
+        //var frame = keyFrames[index];
+
+        //if (frame == null) return;
+
+        transform.position = currentFrame.Position;
+        transform.rotation = currentFrame.Rotation;
+        //transform.position = frame.Position;
+        //transform.rotation = frame.Rotation;
+        playBackIndex++;
     }
 
     private void Record()
-    {
+    {             
+       // startFrame = Time.frameCount;
         rigidbody.isKinematic = false;
         var frame = Time.frameCount % bufferFrames;
         var time = Time.time;
         print("Writing frame " + frame);
 
-        keyFrames[frame] = new MyKeyFrame(time, transform.position, transform.rotation);
+        keyFramesList.Add(new MyKeyFrame(time, transform.position, transform.rotation));
+        //keyFrames[frame] = new MyKeyFrame(time, transform.position, transform.rotation);
     }
 }
 
